@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Flores para você 🌸</title>
+  <style>
+    :root {
+      font-family: 'Poppins', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      color: #fff;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      background: radial-gradient(circle at 20% 20%, #f6e1ff, #d8b4ff, #a66cff, #5f0f99);
+      background-size: 250% 250%;
+      animation: aurora 22s ease-in-out infinite;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.45), transparent 45%),
+        radial-gradient(circle at 70% 80%, rgba(202, 160, 255, 0.5), transparent 55%);
+      mix-blend-mode: screen;
+      filter: blur(45px);
+      animation: pulse 13s ease-in-out infinite;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    .msg {
+      position: fixed;
+      top: 40px;
+      width: 100%;
+      text-align: center;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      letter-spacing: 3px;
+      z-index: 2;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .msg span {
+      display: block;
+      font-size: clamp(2.1rem, 4vw, 3.3rem);
+      font-weight: 600;
+    }
+
+    .msg small {
+      display: block;
+      font-size: clamp(1.1rem, 2vw, 1.6rem);
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      margin-top: 10px;
+    }
+
+    .msg em {
+      font-style: normal;
+      font-weight: 400;
+      letter-spacing: 2px;
+    }
+
+    @keyframes aurora {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 0.85; }
+    }
+  </style>
+</head>
+<body>
+  <div class="msg">
+    <span>Flores infinitas para você 🌷</span>
+  </div>
+  <canvas id="flores"></canvas>
+  <script>
+    const canvas = document.getElementById('flores');
+    const ctx = canvas.getContext('2d');
+    let w = canvas.width = window.innerWidth;
+    let h = canvas.height = window.innerHeight;
+
+    const colors = [
+      '#f3c8ff',
+      '#e0b3ff',
+      '#ca99ff',
+      '#b384ff',
+      '#9b5de5',
+      '#cdb5ff',
+      '#ffa6ff',
+      '#efd4ff'
+    ];
+
+    const flowers = [];
+    const petals = [];
+
+    const rand = (min, max) => Math.random() * (max - min) + min;
+    const randInt = (min, max) => Math.floor(rand(min, max + 1));
+
+    function drawFlower(x, y, size, petalsCount, color, angle) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      const gradient = ctx.createRadialGradient(0, 0, size * 0.2, 0, 0, size);
+      gradient.addColorStop(0, '#fff8');
+      gradient.addColorStop(1, color);
+
+      for (let i = 0; i < petalsCount; i++) {
+        ctx.save();
+        ctx.rotate((Math.PI * 2 * i) / petalsCount);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.bezierCurveTo(size * 0.2, -size * 0.15, size * 0.7, -size * 0.25, size, 0);
+        ctx.bezierCurveTo(size * 0.7, size * 0.25, size * 0.2, size * 0.15, 0, 0);
+        ctx.fillStyle = gradient;
+        ctx.globalAlpha = 0.9;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.18, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff2b2';
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    class Flower {
+      constructor(x = rand(0, w), y = rand(h * 0.2, h * 0.95)) {
+        this.x = x;
+        this.y = y;
+        this.size = 0;
+        this.maxSize = rand(40, 90);
+        this.petals = randInt(5, 9);
+        this.color = colors[randInt(0, colors.length - 1)];
+        this.angle = rand(0, Math.PI * 2);
+        this.spin = rand(-0.004, 0.004);
+        this.growth = rand(25, 55);
+        this.opacity = 0;
+        this.life = 0;
+        this.lifeSpan = rand(8, 13);
+        this.floatSpeed = rand(5, 18);
+      }
+
+      update(dt) {
+        this.life += dt;
+        if (this.size < this.maxSize) {
+          this.size += this.growth * dt;
+          this.opacity = Math.min(1, this.size / (this.maxSize * 0.6));
+        } else {
+          this.opacity = Math.max(0, this.opacity - dt * 0.15);
+        }
+        this.y -= this.floatSpeed * dt;
+        this.x += Math.sin(this.life * 1.5) * dt * 12;
+        this.angle += this.spin;
+      }
+
+      draw() {
+        ctx.globalAlpha = this.opacity;
+        drawFlower(this.x, this.y, this.size, this.petals, this.color, this.angle);
+        ctx.globalAlpha = 1;
+      }
+
+      get dead() {
+        return this.opacity <= 0 && this.size >= this.maxSize * 0.95;
+      }
+    }
+
+    class Petal {
+      constructor() {
+        this.reset(true);
+      }
+
+      reset(initial = false) {
+        this.x = rand(0, w);
+        this.y = initial ? rand(0, h) : -10;
+        this.size = rand(6, 14);
+        this.speed = rand(20, 60);
+        this.wave = rand(0.5, 2);
+        this.angle = rand(0, Math.PI * 2);
+        this.color = colors[randInt(0, colors.length - 1)];
+        this.rotation = rand(0, Math.PI * 2);
+        this.spin = rand(-0.6, 0.6);
+        this.lifeTime = initial ? rand(0, 5) : 0;
+      }
+
+      update(dt) {
+        this.y += this.speed * dt;
+        this.x += Math.sin(this.lifeTime + this.wave) * 12 * dt;
+        this.rotation += this.spin * dt;
+        this.lifeTime += dt;
+        if (this.y > h + this.size) this.reset();
+      }
+
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        ctx.fillStyle = this.color + 'aa';
+        ctx.beginPath();
+        ctx.moveTo(0, -this.size);
+        ctx.quadraticCurveTo(this.size, -this.size, this.size * 0.6, 0);
+        ctx.quadraticCurveTo(this.size, this.size, 0, this.size);
+        ctx.quadraticCurveTo(-this.size, this.size, -this.size * 0.6, 0);
+        ctx.quadraticCurveTo(-this.size, -this.size, 0, -this.size);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    function ensurePetals(total = 60) {
+      while (petals.length < total) {
+        petals.push(new Petal());
+      }
+    }
+
+    function burst(x, y) {
+      const count = randInt(4, 7);
+      for (let i = 0; i < count; i++) {
+        flowers.push(new Flower(x + rand(-40, 40), y + rand(-20, 20)));
+      }
+    }
+
+    let lastTime = 0;
+    let spawnTimer = 0;
+    ensurePetals();
+
+    function animate(time = 0) {
+      const dt = (time - lastTime) / 1000 || 0;
+      lastTime = time;
+      spawnTimer += dt;
+
+      ctx.clearRect(0, 0, w, h);
+
+      petals.forEach(petal => {
+        if (isNaN(petal.lifeTime)) petal.lifeTime = 0;
+        petal.update(dt);
+        petal.draw();
+      });
+
+      for (let i = flowers.length - 1; i >= 0; i--) {
+        const flower = flowers[i];
+        flower.update(dt);
+        flower.draw();
+        if (flower.dead) flowers.splice(i, 1);
+      }
+
+      if (spawnTimer > 0.8) {
+        burst(rand(0, w), rand(h * 0.3, h * 0.9));
+        spawnTimer = 0;
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+    burst(w / 2, h / 2);
+
+    canvas.addEventListener('click', (event) => {
+      const rect = canvas.getBoundingClientRect();
+      burst(event.clientX - rect.left, event.clientY - rect.top);
+    });
+
+    window.addEventListener('resize', () => {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+      petals.length = 0;
+      ensurePetals();
+    });
+  </script>
+</body>
+</html>
